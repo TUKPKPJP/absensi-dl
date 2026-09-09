@@ -58,6 +58,20 @@
 <div id="doneBox"></div>
 <div id="errorBox"></div>
 
+<iframe name="hidden_target" style="display:none;"></iframe>
+<form id="sendForm" method="POST" target="hidden_target" style="display:none;">
+  <input type="hidden" name="employeeName" id="f_employeeName">
+  <input type="hidden" name="locationText" id="f_locationText">
+  <input type="hidden" name="lat" id="f_lat">
+  <input type="hidden" name="lng" id="f_lng">
+  <input type="hidden" name="accuracy" id="f_accuracy">
+  <input type="hidden" name="confidence" id="f_confidence">
+  <input type="hidden" name="flagAccuracy" id="f_flagAccuracy">
+  <input type="hidden" name="flagJitter" id="f_flagJitter">
+  <input type="hidden" name="flagSensor" id="f_flagSensor">
+  <input type="hidden" name="photoBase64" id="f_photoBase64">
+</form>
+
 <script>
 // ====== GANTI DENGAN URL WEB APP APPS SCRIPT ANDA (yang diakhiri /exec) ======
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzE6trp1PWNpnrQpF_JHGVTz8g_ZLUdbdcD_-MQNDDwMi8IesVaYh4DZzfqWWZTjxjA/exec';
@@ -188,12 +202,7 @@ function captureAndSend(){
     photoBase64: photoBase64
   };
 
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
-  }).then(function(){
+  sendViaForm(payload, function(){
     document.getElementById('sendingBox').innerHTML = '';
     const badgeClass = confidence==='tinggi' ? 'green' : confidence==='sedang' ? 'amber' : 'red';
     const badgeText = confidence==='tinggi' ? 'Tinggi' : confidence==='sedang' ? 'Sedang — akan ditinjau admin' : 'Rendah — akan ditinjau admin';
@@ -203,9 +212,34 @@ function captureAndSend(){
       '<div class="muted">Jam resmi tersimpan otomatis di server (cek di Dashboard Admin).</div>' +
       '<div style="margin-top:10px;"><span class="badge ' + badgeClass + '">' + badgeText + '</span></div></div>' +
       '<button class="outline" onclick="location.reload()">Absen lagi</button>';
-  }).catch(function(err){
-    document.getElementById('sendingBox').innerHTML = '<div class="card" style="border-color:var(--red);color:var(--red);">Gagal mengirim (periksa koneksi internet): ' + err.message + '</div><button onclick="location.reload()">Ulangi</button>';
   });
+}
+
+function sendViaForm(payload, onDone){
+  const form = document.getElementById('sendForm');
+  form.action = APPS_SCRIPT_URL;
+  document.getElementById('f_employeeName').value = payload.employeeName;
+  document.getElementById('f_locationText').value = payload.locationText;
+  document.getElementById('f_lat').value = payload.lat;
+  document.getElementById('f_lng').value = payload.lng;
+  document.getElementById('f_accuracy').value = payload.accuracy;
+  document.getElementById('f_confidence').value = payload.confidence;
+  document.getElementById('f_flagAccuracy').value = payload.flags.accuracy;
+  document.getElementById('f_flagJitter').value = payload.flags.jitter;
+  document.getElementById('f_flagSensor').value = payload.flags.sensor;
+  document.getElementById('f_photoBase64').value = payload.photoBase64;
+
+  const iframe = document.querySelector('iframe[name="hidden_target"]');
+  let done = false;
+  const finish = function(){
+    if(done) return;
+    done = true;
+    onDone();
+  };
+  iframe.onload = finish;
+  setTimeout(finish, 8000); // jaga-jaga kalau event load tidak muncul di beberapa browser
+
+  form.submit();
 }
 </script>
 </body>
